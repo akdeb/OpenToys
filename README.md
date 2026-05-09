@@ -20,15 +20,36 @@
 
 ## Featured in
 <div align="center">
- <a href="https://www.hackster.io/news/the-easy-way-to-build-interactive-ai-toys-for-your-kids-0ba401a9328f" target="_blank">
-    <img src="https://github.com/user-attachments/assets/c42ea65b-cf04-488f-bb7d-bdef5158bf24" width="200"/>
-  </a>
-
-**The Easy Way to Build Interactive AI Toys for Your Kids**
-
-<a href="https://www.hackster.io/news/the-easy-way-to-build-interactive-ai-toys-for-your-kids-0ba401a9328f">
-Read the full article →
-</a>
+  <table>
+    <tr>
+      <td align="center" width="260">
+        <a href="https://www.wired.com/story/the-new-wild-west-of-ai-kids-toys/" target="_blank">
+          <img src="assets/wired.png" width="200"/>
+        </a>
+      </td>
+      <td align="center" width="260">
+        <a href="https://www.hackster.io/news/the-easy-way-to-build-interactive-ai-toys-for-your-kids-0ba401a9328f" target="_blank">
+          <img src="assets/hackster.png" width="200"/>
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="260">
+        <strong>The New Wild West of AI Kids Toys</strong>
+      </td>
+      <td align="center" width="260">
+        <strong>The Easy Way to Build Interactive AI Toys for Your Kids</strong>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="260">
+        <a href="https://www.wired.com/story/the-new-wild-west-of-ai-kids-toys/">Read the WIRED article →</a>
+      </td>
+      <td align="center" width="260">
+        <a href="https://www.hackster.io/news/the-easy-way-to-build-interactive-ai-toys-for-your-kids-0ba401a9328f">Read the Hackster article →</a>
+      </td>
+    </tr>
+  </table>
 </div>
 
 ## 🎥 Demo Video
