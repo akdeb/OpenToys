@@ -30,6 +30,15 @@ English | [中文](README.zh.md)
   <a href="https://www.wired.com/story/the-new-wild-west-of-ai-kids-toys/">Read the WIRED article →</a>
 </p>
 <br clear="left"/>
+<p>
+  <a href="https://arstechnica.com/ai/2026/05/the-new-wild-west-of-ai-kids-toys/" target="_blank">
+    <img src="assets/arstechnica.png" width="180" align="left"/>
+  </a>
+<strong>AI kids' toys </strong>
+  <br/>
+  <a href="https://www.wired.com/story/the-new-wild-west-of-ai-kids-toys/">Read the ArsTechnica article →</a>
+</p>
+<br clear="left"/>
 
 <p>
   <a href="https://www.hackster.io/news/the-easy-way-to-build-interactive-ai-toys-for-your-kids-0ba401a9328f" target="_blank">
