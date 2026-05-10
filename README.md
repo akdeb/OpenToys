@@ -9,14 +9,12 @@
 
 *OpenToys is the local-first platform version of [ElatoAI](https://www.github.com/akdeb/ElatoAI). No cloud required, no subscription lock-in, and your data stays private on-device.*
 
+**Apple Silicon · Rust + React · ESP32-S3 · Whisper ASR · Qwen3-TTS · MLX LLMs**
 
 [![App](https://img.shields.io/badge/App-Tauri%20%2B%20React-yellow)](#stack)
 [![ESP32](https://img.shields.io/badge/Hardware-ESP32--S3-red?logo=espressif&logoColor=white)](#esp32-diy-hardware)
 [![License](https://img.shields.io/badge/License-MIT-brightgreen)](LICENSE)
 [![Releases](https://img.shields.io/badge/Download-Latest%20DMG-blue)](https://github.com/akdeb/open-toys/releases/latest/download/OpenToys_0.1.0_aarch64.dmg)
-
-
-**Apple Silicon · Rust + React · ESP32-S3 · Whisper ASR · Qwen3-TTS · MLX LLMs**
 
 </div>
 
