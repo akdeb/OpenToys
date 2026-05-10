@@ -1,3 +1,5 @@
+English | [中文](README.zh.md)
+
 <div align="center">
 
 <img src="assets/logo.png" width="100" align="center"/>
