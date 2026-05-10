@@ -1,11 +1,11 @@
 <div align="center">
 
 <img src="assets/logo.png" width="100" align="center"/>
-<br /><br />
+<br />
 
 # OpenToys
 
-### Open-Source Local Voice AI for Toys, Companions, and Robots
+### Open-Source Local Voice AI for Toys, Companions, and Robots that run on your MacBook
 
 Apple Silicon · Rust + React · ESP32-S3 · Whisper ASR · Qwen3-TTS · MLX LLMs
 
@@ -16,7 +16,7 @@ Apple Silicon · Rust + React · ESP32-S3 · Whisper ASR · Qwen3-TTS · MLX LLM
 [![Releases](https://img.shields.io/badge/Download-Latest%20DMG-blue)](https://github.com/akdeb/open-toys/releases/latest/download/OpenToys_0.1.0_aarch64.dmg)
 
 
-*OpenToys is the local-first platform version of [ElatoAI](https://www.github.com/akdeb/ElatoAI). Build conversational voice AI apps for toys, companions, and robots that run fully local on your Mac. NO cloud required for runtime, NO subscription lock-in, and your data stays on-device!*
+*OpenToys is the local-first platform version of [ElatoAI](https://www.github.com/akdeb/ElatoAI). No cloud required, no subscription lock-in, and your data stays private on-device.*
 
 </div>
 
