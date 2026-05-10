@@ -1,20 +1,22 @@
 <div align="center">
 
-# 👾 OpenToys
+<img src="assets/logo.png" width="100" align="center"/>
+<br /><br />
+
+# OpenToys
 
 ### Open-Source Local Voice AI for Toys, Companions, and Robots
 
-**Apple Silicon · Rust + React · ESP32-S3 · Whisper ASR · Qwen3-TTS · MLX LLMs**
+Apple Silicon · Rust + React · ESP32-S3 · Whisper ASR · Qwen3-TTS · MLX LLMs
 
 
-[![App](https://img.shields.io/badge/App-Tauri%20%2B%20React-black)](#stack)
+[![App](https://img.shields.io/badge/App-Tauri%20%2B%20React-yellow)](#stack)
 [![ESP32](https://img.shields.io/badge/Hardware-ESP32--S3-red?logo=espressif&logoColor=white)](#esp32-diy-hardware)
 [![License](https://img.shields.io/badge/License-MIT-brightgreen)](LICENSE)
 [![Releases](https://img.shields.io/badge/Download-Latest%20DMG-blue)](https://github.com/akdeb/open-toys/releases/latest/download/OpenToys_0.1.0_aarch64.dmg)
 
 
-> *Build conversational voice AI apps for toys, companions, and robots that run fully local on your Mac.*
-> *No cloud required for runtime, no subscription lock-in, and your data stays on-device.*
+*OpenToys is the local-first platform version of [ElatoAI](https://www.github.com/akdeb/ElatoAI). Build conversational voice AI apps for toys, companions, and robots that run fully local on your Mac. NO cloud required for runtime, NO subscription lock-in, and your data stays on-device!*
 
 </div>
 
