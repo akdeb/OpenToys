@@ -46,10 +46,6 @@
 ## News
 - **2026-03-14:** OpenToys launched🎉 And it's Pi Day! If you're looking to run realtime AI models like OpenAI Realtime, Gemini, Eleven Labs and more on your ESP32 device, check it out [here](https://www.github.com/akdeb/ElatoAI). 
 
-## App Design
-<!-- ![OpenToys Cover](assets/cover.png) -->
-![OpenToys Demo](assets/open-toys.gif)
-
 ## Why OpenToys?
 
 - **Fully Local**: NO cloud, NO subscriptions, NO data leaving your home, FREE AI forever.
@@ -57,6 +53,15 @@
 - **Voice Cloning**: Clone your own voice or your favorite characters with <10s of audio.
 - **Customizable**: Build your own toys, companions, robots and more with an ESP32.
 - **Open-source**: The community is open-source and free to use and contribute to.
+
+## App Design
+<!-- ![OpenToys Cover](assets/cover.png) -->
+![OpenToys Demo](assets/open-toys.gif)
+
+## ESP32 DIY Hardware
+
+![ESP32 DIY Hardware](assets/pcb-design.png)
+[Firmware Docs ⏭️](https://www.elatoai.com/docs/blog/firmware)
 
 ## Download & Install
 
@@ -71,11 +76,6 @@
 4. Run `cd app`
 5. Run `npm install`
 6. Run `npm run tauri dev`
-
-## ESP32 DIY Hardware
-
-![ESP32 DIY Hardware](assets/pcb-design.png)
-[Firmware Docs ⏭️](https://www.elatoai.com/docs/blog/firmware)
 
 ## Cards & Stories
 Create experiences with personalities that can play games, tell stories, engage in educational conversations. Here are some of the default characters with more prompt details in [personalities.json](./app/src/assets/personalities.json).
