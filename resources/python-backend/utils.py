@@ -9,7 +9,8 @@ import numpy as np
 
 STT = "mlx-community/whisper-large-v3-turbo-asr-fp16"
 LLM = "mlx-community/Ministral-3-3B-Instruct-2512-4bit"
-TTS = "mlx-community/chatterbox-turbo-fp16"
+CHATTERBOX_TTS = "mlx-community/chatterbox-turbo-fp16"
+BREEZE_TTS = "mlx-community/Breeze-TTS-2-mlx-4bit"
 QWEN3_TTS = "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit"
 
 
@@ -61,12 +62,9 @@ def is_thinking_model(repo_id: str) -> bool:
 
 
 def normalize_tts_backend(backend: Optional[str]) -> str:
-    value = (backend or "").strip().lower()
-    if value in {"", "qwen3-tts", "qwen3_tts", "qwen3"}:
-        return "qwen3-tts"
-    if value in {"chatterbox", "chatterbox-turbo", "chatterbox_turbo"}:
-        return "chatterbox-turbo"
-    return "qwen3-tts"
+    from model_profiles import get_tts_profile
+
+    return get_tts_profile(backend).id
 
 
 # Reasoning markup differs per model family, and all of it has to be removed

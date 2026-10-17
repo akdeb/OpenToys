@@ -24,6 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import db_service
 import utils
+from model_profiles import get_tts_profile
 from utils import STT, LLM, create_opus_packetizer, normalize_tts_backend, is_thinking_model
 from engine.characters import build_llm_messages, build_runtime_context, build_system_prompt
 from engine.conversation import build_context_history
@@ -337,7 +338,7 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
             tts_backend=tts_be, experience_type=exp_type,
             personality_name=getattr(personality, "name", None),
             is_bedtime=_is_bedtime(), thinking_model=thinking,
-            audience=_audience(),
+            audience=_audience(), llm_repo=llm_repo,
         )
         sys_prompt = build_system_prompt(
             personality_name=getattr(personality, "name", None),
@@ -612,9 +613,11 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
             except Exception:
                 pass
 
-        allow_para = normalize_tts_backend(getattr(pipeline, "tts_backend", None)) == "chatterbox-turbo"
         tts_be = normalize_tts_backend(getattr(pipeline, "tts_backend", None))
-        tts_soft_limit = 260 if tts_be == "qwen3-tts" else 140
+        tts_profile = get_tts_profile(tts_be)
+        allow_para = tts_profile.allows_cues
+        cue_style = tts_profile.cue_style or "brackets"
+        tts_soft_limit = tts_profile.soft_limit
         ref_audio, ref_text = _voice_refs()
 
         if for_esp32 and not bedtime_autoplay:
@@ -631,7 +634,7 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
         # An opening chunk with no sentence-ending punctuation shouldn't sit in the
         # buffer for a full soft_limit's worth of tokens -- that's dead air before
         # the first word. Split it sooner, then relax once audio is flowing.
-        first_chunk_soft_limit = 110 if tts_be == "qwen3-tts" else 90
+        first_chunk_soft_limit = tts_profile.first_chunk_soft_limit
         queued_any = False
 
         async def _llm_producer():
@@ -659,7 +662,7 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
                         soft_limit=tts_soft_limit if queued_any else first_chunk_soft_limit,
                     )
                     for chunk in ready:
-                        chunk = sanitize_spoken_text(chunk, allow_paralinguistic=allow_para).strip()
+                        chunk = sanitize_spoken_text(chunk, allow_paralinguistic=allow_para, cue_style=cue_style, cues=tts_profile.cues).strip()
                         if chunk:
                             queued_any = True
                             await text_queue.put(chunk)
@@ -671,7 +674,7 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
                 if carry and not cancel_event.is_set():
                     ready, _ = _extract_speakable_chunks(carry, flush=True, soft_limit=tts_soft_limit)
                     for chunk in ready:
-                        chunk = sanitize_spoken_text(chunk, allow_paralinguistic=allow_para).strip()
+                        chunk = sanitize_spoken_text(chunk, allow_paralinguistic=allow_para, cue_style=cue_style, cues=tts_profile.cues).strip()
                         if chunk:
                             with suppress(asyncio.QueueFull):
                                 text_queue.put_nowait(chunk)
@@ -680,8 +683,8 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
 
         producer = asyncio.create_task(_llm_producer())
 
-        tts_batch_target_chars = 360 if tts_be == "qwen3-tts" else 240
-        tts_batch_max_chars = 460 if tts_be == "qwen3-tts" else 320
+        tts_batch_target_chars = tts_profile.batch_target_chars
+        tts_batch_max_chars = tts_profile.batch_max_chars
         tts_batch_timeout = 0.9
         tts_batch_max_sentences = 4
         tts_batch_min_sentences = 2
@@ -809,7 +812,7 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
             with suppress(asyncio.CancelledError, Exception):
                 await producer
 
-        full_response = sanitize_spoken_text("".join(llm_parts), allow_paralinguistic=allow_para).strip()
+        full_response = sanitize_spoken_text("".join(llm_parts), allow_paralinguistic=allow_para, cue_style=cue_style, cues=tts_profile.cues).strip()
         if bedtime_autoplay and isinstance(bedtime_chapter_index, int) and isinstance(bedtime_chapter_total, int):
             full_response = sanitize_bedtime_chapter(full_response, bedtime_chapter_index, bedtime_chapter_total)
         if llm_error:

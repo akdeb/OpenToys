@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import fnmatch
 import json
 import logging
 import os
 import time
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request
@@ -14,10 +16,113 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 import db_service
-from utils import LLM, STT, TTS, QWEN3_TTS, normalize_tts_backend
+from model_profiles import TTS_PROFILES, get_tts_profile
+from utils import LLM, STT, normalize_tts_backend, resolve_local_model_source
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+HF_DOWNLOAD_EXCLUDES = (
+    "*.mp4",
+    "*.mov",
+    "*.webm",
+    "*.png",
+    "*.jpg",
+    "*.jpeg",
+    "*.gif",
+)
+
+
+def _is_downloadable_model_file(filename: str) -> bool:
+    return not any(fnmatch.fnmatch(filename, pattern) for pattern in HF_DOWNLOAD_EXCLUDES)
+
+
+def _format_bytes(count: int) -> str:
+    units = ("B", "KB", "MB", "GB")
+    size = float(max(count, 0))
+    for unit in units:
+        if size < 1024 or unit == units[-1]:
+            return f"{size:.1f} {unit}" if unit != "B" else f"{int(size)} B"
+        size /= 1024
+    return f"{size:.1f} GB"
+
+
+def _hf_repo_cache_dir(repo_id: str) -> Path:
+    try:
+        from huggingface_hub.constants import HF_HUB_CACHE
+    except Exception:
+        HF_HUB_CACHE = os.path.expanduser("~/.cache/huggingface/hub")
+    return Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}"
+
+
+def _hf_blob_downloaded_bytes(repo_id: str, sibling: Any) -> int:
+    blob_name = None
+    lfs = getattr(sibling, "lfs", None)
+    if lfs is not None:
+        blob_name = getattr(lfs, "sha256", None)
+    blob_name = blob_name or getattr(sibling, "blob_id", None)
+    if not blob_name:
+        return 0
+
+    blobs = _hf_repo_cache_dir(repo_id) / "blobs"
+    candidates = (blobs / blob_name, blobs / f"{blob_name}.incomplete")
+    sizes = []
+    for path in candidates:
+        try:
+            if path.exists():
+                sizes.append(path.stat().st_size)
+        except OSError:
+            pass
+    return max(sizes, default=0)
+
+
+async def _download_hf_file_with_progress(repo_id: str, sibling: Any, *, downloaded_before: int, total_bytes: int):
+    from huggingface_hub import hf_hub_download
+
+    filename = sibling.rfilename
+    expected_size = int(getattr(sibling, "size", 0) or 0)
+    task = asyncio.create_task(
+        asyncio.to_thread(
+            lambda: hf_hub_download(
+                repo_id=repo_id,
+                filename=filename,
+                local_files_only=False,
+            )
+        )
+    )
+
+    last_seen = -1
+    while not task.done():
+        current = _hf_blob_downloaded_bytes(repo_id, sibling)
+        if expected_size > 0:
+            current = min(current, expected_size)
+        if current != last_seen:
+            last_seen = current
+            overall = downloaded_before + current
+            progress = overall / total_bytes if total_bytes > 0 else 0.0
+            detail = (
+                f"{_format_bytes(current)} / {_format_bytes(expected_size)}"
+                if expected_size > 0
+                else _format_bytes(current)
+            )
+            yield {
+                "stage": "downloading",
+                "progress": min(0.99, progress),
+                "message": f"Downloading {filename} ({detail})",
+            }
+        await asyncio.sleep(0.5)
+
+    await task
+
+
+def _hf_file_is_cached(repo_id: str, filename: str) -> bool:
+    try:
+        from huggingface_hub import hf_hub_download
+
+        hf_hub_download(repo_id=repo_id, filename=filename, local_files_only=True)
+        return True
+    except Exception:
+        return False
 
 
 @router.get("/models")
@@ -41,6 +146,17 @@ async def get_models(request: Request):
         },
         "tts": {
             "backend": tts_backend,
+            "options": [
+                {
+                    "id": p.id,
+                    "name": p.label,
+                    "ramGb": p.ram_gb,
+                    "diskGb": p.disk_gb,
+                    "quality": p.quality,
+                    "note": p.note,
+                }
+                for p in TTS_PROFILES
+            ],
             "backbone_repo": tts_repo,
             "codec_repo": None,
             "loaded": pipeline is not None and pipeline.tts is not None,
@@ -262,20 +378,93 @@ async def switch_tts_model(request: Request, body: TtsSwitchRequest):
     """Download TTS weights and hot-swap the TTS backend."""
     pipeline = getattr(request.app.state, "pipeline", None)
     normalized_backend = normalize_tts_backend(body.tts_backend)
-    target_repo = QWEN3_TTS if normalized_backend == "qwen3-tts" else TTS
+    target_repo = get_tts_profile(normalized_backend).repo
 
     async def generate_progress():
         try:
-            yield json.dumps({"stage": "downloading", "progress": 0.0, "message": f"Preparing {normalized_backend}..."}) + "\n"
-            from huggingface_hub import snapshot_download
+            yield json.dumps({"stage": "downloading", "progress": 0.0, "message": f"Checking {normalized_backend} cache..."}) + "\n"
 
-            try:
-                snapshot_download(repo_id=target_repo, local_files_only=False, max_workers=4)
-            except Exception as e:
-                yield json.dumps({"stage": "error", "error": f"Download failed: {e}"}) + "\n"
-                return
+            local_source = await asyncio.to_thread(lambda: resolve_local_model_source(target_repo))
+            if os.path.isdir(local_source):
+                yield json.dumps({
+                    "stage": "downloading",
+                    "progress": 1.0,
+                    "message": f"Found cached {normalized_backend}. No download needed.",
+                }) + "\n"
+            else:
+                from huggingface_hub import HfApi
 
-            yield json.dumps({"stage": "downloading", "progress": 1.0, "message": "Download complete!"}) + "\n"
+                try:
+                    info = await asyncio.to_thread(
+                        lambda: HfApi().model_info(target_repo, files_metadata=True)
+                    )
+                    siblings = [
+                        sibling
+                        for sibling in info.siblings
+                        if _is_downloadable_model_file(getattr(sibling, "rfilename", ""))
+                    ]
+                    total_bytes = sum(
+                        int(getattr(sibling, "size", 0) or 0)
+                        for sibling in siblings
+                    )
+                    downloaded_bytes = 0
+                    file_count = len(siblings)
+
+                    for index, sibling in enumerate(siblings, start=1):
+                        filename = sibling.rfilename
+                        size = int(getattr(sibling, "size", 0) or 0)
+                        if await asyncio.to_thread(lambda filename=filename: _hf_file_is_cached(target_repo, filename)):
+                            downloaded_bytes += size
+                            progress = (
+                                downloaded_bytes / total_bytes
+                                if total_bytes > 0
+                                else index / max(file_count, 1)
+                            )
+                            yield json.dumps({
+                                "stage": "downloading",
+                                "progress": min(1.0, progress),
+                                "message": f"Using cached {filename} ({index}/{file_count})",
+                            }) + "\n"
+                            continue
+
+                        baseline = (
+                            downloaded_bytes / total_bytes
+                            if total_bytes > 0
+                            else (index - 1) / max(file_count, 1)
+                        )
+                        yield json.dumps({
+                            "stage": "downloading",
+                            "progress": min(0.99, baseline),
+                            "message": f"Downloading missing file {filename} ({index}/{file_count})...",
+                        }) + "\n"
+                        async for update in _download_hf_file_with_progress(
+                            target_repo,
+                            sibling,
+                            downloaded_before=downloaded_bytes,
+                            total_bytes=total_bytes,
+                        ):
+                            yield json.dumps(update) + "\n"
+                        downloaded_bytes += size
+                        progress = (
+                            downloaded_bytes / total_bytes
+                            if total_bytes > 0
+                            else index / max(file_count, 1)
+                        )
+                        detail = (
+                            f"{_format_bytes(downloaded_bytes)} / {_format_bytes(total_bytes)}"
+                            if total_bytes > 0
+                            else f"{index}/{file_count} files"
+                        )
+                        yield json.dumps({
+                            "stage": "downloading",
+                            "progress": min(1.0, progress),
+                            "message": f"Downloaded {filename} ({detail})",
+                        }) + "\n"
+                except Exception as e:
+                    yield json.dumps({"stage": "error", "error": f"Download failed: {e}"}) + "\n"
+                    return
+
+                yield json.dumps({"stage": "downloading", "progress": 1.0, "message": "Download complete!"}) + "\n"
             yield json.dumps({"stage": "loading", "progress": 0.0, "message": "Loading TTS weights..."}) + "\n"
 
             # Same as the LLM switch: with no pipeline yet, persist and move on.

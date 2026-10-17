@@ -93,7 +93,7 @@
 ## 技术栈
 
 - STT：Whisper Turbo ASR
-- TTS：Qwen3-TTS 和 Chatterbox-turbo
+- TTS：Qwen3-TTS 和 BreezeBlue TTS 2
 - LLM：来自 [`mlx-community`](http://huggingface.co/mlx-community) 的任意 LLM（Qwen3、Llama、Mistral3 等）
 - App：Tauri、React、Tailwind CSS、TypeScript、Rust
 - 重点平台：Apple Silicon（M1/2/3/4/5）

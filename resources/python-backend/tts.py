@@ -92,6 +92,102 @@ class ChatterboxTTS:
         return self.output_sample_rate
 
 
+class BreezeTTS:
+    """BreezeBlue TTS backend with voice design and optional voice cloning."""
+
+    # Chunk size in samples (120ms at 24kHz = 2880 samples)
+    # This MUST match the Opus frame size  (OPUS_FRAME_SAMPLES in utils.py)
+    CHUNK_SAMPLES = 2880
+
+    def __init__(
+        self,
+        model_id: str = "mlx-community/Breeze-TTS-2-mlx-4bit",
+        ref_audio_path: Optional[str] = None,
+        output_sample_rate: int = 24_000,
+        temperature: float = 0.9,
+        top_k: int = 50,
+        top_p: float = 1.0,
+        repetition_penalty: float = 1.0,
+        stream: bool = False,
+        streaming_interval: float = 2.0,
+        voice: str = "S0",
+        instruction: Optional[str] = None,
+        cfg_scale: float = 4.0,
+    ):
+        self.model_id = model_id
+        self.ref_audio_path = ref_audio_path
+        self.output_sample_rate = output_sample_rate
+        self.temperature = temperature
+        self.top_k = top_k
+        self.top_p = top_p
+        self.repetition_penalty = repetition_penalty
+        self.stream = stream
+        self.streaming_interval = streaming_interval
+        self.voice = voice
+        self.instruction = instruction
+        self.cfg_scale = cfg_scale
+        self.model = None
+
+    def load(self) -> None:
+        self.model = load_tts(resolve_local_model_source(self.model_id))
+        self.output_sample_rate = int(
+            getattr(self.model, "sample_rate", self.output_sample_rate)
+        )
+
+    def prepare_ref_audio(self, ref_audio_path: Optional[str]) -> None:
+        self.ref_audio_path = ref_audio_path or None
+
+    def generate(
+        self,
+        text: str,
+        ref_audio_path: Optional[str] = None,
+        ref_text: Optional[str] = None,
+    ) -> Generator[bytes, None, None]:
+        if not self.model:
+            raise RuntimeError("TTS model not loaded")
+
+        if ref_audio_path is not None:
+            self.prepare_ref_audio(ref_audio_path)
+
+        gen_kwargs = dict(
+            voice=self.voice,
+            instruct=self.instruction,
+            cfg_scale=self.cfg_scale,
+            temperature=self.temperature,
+            top_k=self.top_k,
+            top_p=self.top_p,
+            repetition_penalty=self.repetition_penalty,
+            stream=self.stream,
+            streaming_interval=self.streaming_interval,
+        )
+        if self.ref_audio_path and ref_text:
+            gen_kwargs["ref_audio"] = self.ref_audio_path
+            gen_kwargs["ref_text"] = ref_text
+
+        for chunk in self.model.generate(
+            text,
+            **gen_kwargs,
+        ):
+            audio = getattr(chunk, "audio", chunk)
+            audio_np = np.asarray(audio, dtype=np.float32)
+            audio_np = np.clip(audio_np, -1.0, 1.0)
+            audio_int16 = (audio_np * 32767.0).astype(np.int16)
+
+            # Chunk the audio to avoid WebSocket message size limits
+            for i in range(0, len(audio_int16), self.CHUNK_SAMPLES):
+                audio_chunk = audio_int16[i:i + self.CHUNK_SAMPLES]
+                yield audio_chunk.tobytes()
+
+    def warmup(self) -> None:
+        """Warm up the TTS model."""
+        for _ in self.generate("Hello."):
+            pass
+
+    @property
+    def sample_rate(self) -> int:
+        return self.output_sample_rate
+
+
 class Qwen3TTS:
     CHUNK_SAMPLES = 2880
 
@@ -227,3 +323,92 @@ class Qwen3TTS:
     @property
     def sample_rate(self) -> int:
         return self.output_sample_rate
+
+
+class GenericTTS:
+    """Any mlx-audio TTS model that loads with load_model and speaks via generate().
+
+    Everything model-specific (voice, language, sampling) arrives as
+    `generate_kwargs` from the model's profile, so supporting another model is a
+    profile file rather than another engine class.
+    """
+
+    CHUNK_SAMPLES = 2880
+    TARGET_SAMPLE_RATE = 24_000  # the Opus path downstream is fixed at 24 kHz
+
+    def __init__(
+        self,
+        model_id: str,
+        output_sample_rate: int = 24_000,
+        stream: bool = False,
+        streaming_interval: float = 2.0,
+        generate_kwargs: Optional[dict] = None,
+        streams: bool = False,
+        use_ref: bool = True,
+        ref_needs_text: bool = True,
+    ):
+        self.model_id = model_id
+        self.output_sample_rate = output_sample_rate
+        self.stream = stream and streams
+        self.streaming_interval = streaming_interval
+        self.generate_kwargs = dict(generate_kwargs or {})
+        self.use_ref = use_ref
+        self.ref_needs_text = ref_needs_text
+        self.ref_audio_path: Optional[str] = None
+        self.model = None
+
+    def load(self) -> None:
+        self.model = load_tts(resolve_local_model_source(self.model_id))
+
+    def prepare_ref_audio(self, ref_audio_path: Optional[str]) -> None:
+        self.ref_audio_path = ref_audio_path or None
+
+    def _resample(self, audio: np.ndarray, source_rate: int) -> np.ndarray:
+        if source_rate == self.TARGET_SAMPLE_RATE or audio.size == 0:
+            return audio
+        try:
+            import librosa
+
+            return librosa.resample(audio, orig_sr=source_rate, target_sr=self.TARGET_SAMPLE_RATE)
+        except Exception:
+            n = int(round(audio.size * self.TARGET_SAMPLE_RATE / source_rate))
+            return np.interp(np.linspace(0, audio.size - 1, n), np.arange(audio.size), audio)
+
+    def generate(
+        self,
+        text: str,
+        ref_audio_path: Optional[str] = None,
+        ref_text: Optional[str] = None,
+    ) -> Generator[bytes, None, None]:
+        if not self.model:
+            raise RuntimeError("TTS model not loaded")
+
+        if ref_audio_path is not None:
+            self.prepare_ref_audio(ref_audio_path)
+
+        gen_kwargs = dict(self.generate_kwargs)
+        if self.stream:
+            gen_kwargs.update(stream=True, streaming_interval=self.streaming_interval)
+        if self.use_ref and self.ref_audio_path and (ref_text or not self.ref_needs_text):
+            gen_kwargs["ref_audio"] = self.ref_audio_path
+            if ref_text:
+                gen_kwargs["ref_text"] = ref_text
+
+        model_rate = int(getattr(self.model, "sample_rate", self.TARGET_SAMPLE_RATE))
+        for result in self.model.generate(text, **gen_kwargs):
+            audio = getattr(result, "audio", result)
+            rate = int(getattr(result, "sample_rate", None) or model_rate)
+            audio_np = np.asarray(audio, dtype=np.float32).reshape(-1)
+            audio_np = np.clip(self._resample(audio_np, rate), -1.0, 1.0)
+            audio_int16 = (audio_np * 32767.0).astype(np.int16)
+
+            for i in range(0, len(audio_int16), self.CHUNK_SAMPLES):
+                yield audio_int16[i : i + self.CHUNK_SAMPLES].tobytes()
+
+    def warmup(self) -> None:
+        for _ in self.generate("Hello."):
+            pass
+
+    @property
+    def sample_rate(self) -> int:
+        return self.TARGET_SAMPLE_RATE

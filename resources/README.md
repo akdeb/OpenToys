@@ -64,7 +64,7 @@ Create experiences with personalities that can play games, tell stories, engage 
 ## Stack
 
 - STT: Whisper Turbo ASR
-- TTS: Qwen3-TTS and Chatterbox-turbo
+- TTS: Qwen3-TTS and BreezeBlue TTS 2
 - LLMs: any LLM from [`mlx-community`](http://huggingface.co/mlx-community) (Qwen3, Llama, Mistral3, etc.)
 - App: Tauri, React, Tailwind CSS, TypeScript, Rust
 - Platform focus: Apple Silicon (M1/2/3/4/5)

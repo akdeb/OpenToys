@@ -66,7 +66,12 @@ fn guess_model_type(repo_id: &str) -> String {
     let lower = repo_id.to_lowercase();
     if lower.contains("whisper") || lower.contains("stt") {
         "stt".to_string()
-    } else if lower.contains("tts") || lower.contains("chatterbox") {
+    } else if lower.contains("tts") || lower.contains("breeze")
+        || lower.contains("chatterbox")
+        || lower.contains("omnivoice")
+        || lower.contains("drama")
+        || lower.contains("rumik")
+        || lower.contains("higgs") {
         "tts".to_string()
     } else {
         "llm".to_string()

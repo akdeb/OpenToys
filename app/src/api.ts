@@ -357,7 +357,7 @@ export const api = {
     }
   },
 
-  switchTts: async function* (ttsBackend: "chatterbox-turbo" | "qwen3-tts"): AsyncGenerator<{
+  switchTts: async function* (ttsBackend: string): AsyncGenerator<{
     stage: "downloading" | "loading" | "complete" | "error";
     progress?: number;
     message?: string;

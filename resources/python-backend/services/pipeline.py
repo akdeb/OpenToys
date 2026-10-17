@@ -8,8 +8,16 @@ from mlx_lm import stream_generate as mx_stream_generate
 from mlx_lm.utils import load as load_llm
 from mlx_audio.stt import load as load_stt
 
-from tts import ChatterboxTTS, Qwen3TTS
-from utils import STT, LLM, TTS, QWEN3_TTS, resolve_local_model_source, strip_reasoning
+from model_profiles import get_tts_profile
+from tts import BreezeTTS, ChatterboxTTS, GenericTTS, Qwen3TTS
+from utils import STT, LLM, resolve_local_model_source, strip_reasoning
+
+TTS_ENGINES = {
+    "qwen3": Qwen3TTS,
+    "chatterbox": ChatterboxTTS,
+    "breeze": BreezeTTS,
+    "generic": GenericTTS,
+}
 
 try:
     from mlx_vlm import generate as mx_vlm_generate
@@ -153,34 +161,22 @@ class VoicePipeline:
         return await asyncio.to_thread(lambda: self._load_llm_backend_sync(model_repo))
 
     async def _init_tts(self):
-        backend = self._normalize_tts_backend(self.tts_backend)
-        self.tts_backend = backend
+        profile = get_tts_profile(self.tts_backend)
+        self.tts_backend = profile.id
 
-        if backend == "qwen3-tts":
-            self.tts = Qwen3TTS(
-                model_id=QWEN3_TTS,
-                output_sample_rate=self.output_sample_rate,
-                stream=True,
-                streaming_interval=self.streaming_interval,
-            )
-        else:
-            self.tts = ChatterboxTTS(
-                model_id=TTS,
-                output_sample_rate=self.output_sample_rate,
-                stream=True,
-                streaming_interval=self.streaming_interval,
-            )
+        self.tts = TTS_ENGINES[profile.engine](
+            model_id=profile.repo,
+            output_sample_rate=self.output_sample_rate,
+            stream=True,
+            streaming_interval=self.streaming_interval,
+            **profile.params,
+        )
 
         await asyncio.to_thread(self.tts.load)
 
     @staticmethod
     def _normalize_tts_backend(backend: str | None) -> str:
-        value = (backend or "").strip().lower()
-        if value in {"", "qwen3-tts", "qwen3_tts", "qwen3"}:
-            return "qwen3-tts"
-        if value in {"chatterbox", "chatterbox-turbo", "chatterbox_turbo"}:
-            return "chatterbox-turbo"
-        raise ValueError("tts_backend must be 'chatterbox-turbo' or 'qwen3-tts'")
+        return get_tts_profile(backend).id
 
     async def set_tts_backend(self, backend: str) -> str:
         backend = self._normalize_tts_backend(backend)

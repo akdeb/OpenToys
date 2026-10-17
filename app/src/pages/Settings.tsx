@@ -17,6 +17,7 @@ type ModelConfig = {
   tts: {
     backend: string;
     loaded: boolean;
+    options?: TtsOption[];
   };
 };
 
@@ -27,31 +28,16 @@ type SystemProfile = {
   arch: string;
 };
 
-const TTS_OPTIONS: Array<{
-  id: 'chatterbox-turbo' | 'qwen3-tts';
+type TtsBackendId = string;
+
+type TtsOption = {
+  id: TtsBackendId;
   name: string;
   ramGb: number;
   diskGb: number;
   quality: string;
   note: string;
-}> = [
-  {
-    id: 'qwen3-tts',
-    name: 'Qwen3-TTS 4bit',
-    ramGb: 4,
-    diskGb: 2,
-    quality: 'Balanced',
-    note: 'Best default for most Apple Silicon Macs',
-  },
-  {
-    id: 'chatterbox-turbo',
-    name: 'Chatterbox Turbo',
-    ramGb: 6,
-    diskGb: 4,
-    quality: 'Expressive',
-    note: 'Great style/expressivity, usually heavier',
-  },
-];
+};
 
 type DepsProgress = {
   step: number;
@@ -86,7 +72,7 @@ export const Settings = () => {
   const [models, setModels] = useState<ModelConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [llmRepo, setLlmRepo] = useState('');
-  const [ttsBackend, setTtsBackend] = useState<'chatterbox-turbo' | 'qwen3-tts'>('qwen3-tts');
+  const [ttsBackend, setTtsBackend] = useState<TtsBackendId>('qwen3-tts');
   const [savingTts, setSavingTts] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ports, setPorts] = useState<string[]>([]);
@@ -114,7 +100,7 @@ export const Settings = () => {
   const [switchError, setSwitchError] = useState<string | undefined>();
   const [switchTarget, setSwitchTarget] = useState<'llm' | 'tts'>('llm');
   const [pendingModelRepo, setPendingModelRepo] = useState<string>('');
-  const [pendingTtsBackend, setPendingTtsBackend] = useState<'chatterbox-turbo' | 'qwen3-tts' | ''>('');
+  const [pendingTtsBackend, setPendingTtsBackend] = useState<TtsBackendId | ''>('');
 
   const isLikelyDevicePort = (port: string) => /\/dev\/(cu|tty)\.(usbserial|usbmodem)/i.test(port);
 
@@ -254,7 +240,7 @@ export const Settings = () => {
       setModels(modelData);
       setLlmRepo(modelData.llm.repo);
       const normalizedTts =
-        modelData?.tts?.backend === 'chatterbox-turbo' ? 'chatterbox-turbo' : 'qwen3-tts';
+        modelData?.tts?.backend ?? 'qwen3-tts';
       setTtsBackend(normalizedTts);
       const raw = (volSetting as any)?.value;
       const parsed = raw != null ? Number(raw) : 70;
@@ -331,7 +317,7 @@ export const Settings = () => {
     }
   };
 
-  const performTtsSwitch = async (backend: 'chatterbox-turbo' | 'qwen3-tts') => {
+  const performTtsSwitch = async (backend: TtsBackendId) => {
     try {
       for await (const update of api.switchTts(backend)) {
         if (update.stage === 'error') {
@@ -435,7 +421,8 @@ export const Settings = () => {
     }
   };
 
-  const selectedTtsMeta = TTS_OPTIONS.find((o) => o.id === ttsBackend) || null;
+  const ttsOptions: TtsOption[] = models?.tts?.options ?? [];
+  const selectedTtsMeta = ttsOptions.find((o) => o.id === ttsBackend) || null;
 
   return (
     <div className="settings-page space-y-6">
@@ -540,7 +527,7 @@ export const Settings = () => {
             </div>
             <button
               onClick={handleSaveTts}
-              disabled={savingTts || loading || ttsBackend === (models?.tts?.backend === 'chatterbox-turbo' ? 'chatterbox-turbo' : 'qwen3-tts')}
+              disabled={savingTts || loading || ttsBackend === (models?.tts?.backend ?? 'qwen3-tts')}
               className="retro-btn retro-btn-outline settings-action text-gray-900 disabled:opacity-50 flex items-center gap-2"
             >
               <Rss className="w-4 h-4" />
@@ -550,10 +537,10 @@ export const Settings = () => {
           <select
             className="retro-input bg-white border border-gray-200 w-full"
             value={ttsBackend}
-            onChange={(e) => setTtsBackend((e.target.value as 'chatterbox-turbo' | 'qwen3-tts'))}
+            onChange={(e) => setTtsBackend((e.target.value as TtsBackendId))}
             disabled={savingTts || loading}
           >
-            {TTS_OPTIONS.map((opt) => (
+            {ttsOptions.map((opt) => (
               <option key={opt.id} value={opt.id}>
                 {opt.name}
               </option>
@@ -562,6 +549,7 @@ export const Settings = () => {
           {selectedTtsMeta && (
             <div className="text-xs text-gray-600">
               ~{selectedTtsMeta.ramGb}GB RAM · ~{selectedTtsMeta.diskGb}GB Disk · {selectedTtsMeta.quality}
+              {selectedTtsMeta.note ? ` · ${selectedTtsMeta.note}` : ''}
             </div>
           )}
           <p className="text-[10px] mt-2 opacity-60">

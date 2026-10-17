@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Optional
 
+from model_profiles import TtsProfile, get_llm_profile, get_tts_profile
+
 
 # Audience mode. "kid" is the guarded default; see normalize_audience().
 KID = "kid"
@@ -24,8 +26,10 @@ def build_behavior_constraints(
     is_bedtime: bool = False,
     thinking_model: bool = False,
     audience: str = KID,
+    llm_repo: Optional[str] = None,
 ) -> str:
     audience = normalize_audience(audience)
+    tts = get_tts_profile(tts_backend)
     parts: list[str] = [
         "You always respond with spoken-friendly sentences. "
         "Do not use Markdown formatting (no *, **, _, __, backticks). "
@@ -34,13 +38,11 @@ def build_behavior_constraints(
 
     parts.append(_audience_constraints(audience))
 
-    if tts_backend == "chatterbox-turbo":
-        parts.append(
-            "To add expressivity, you should occasionally use ONLY these paralinguistic cues in brackets: "
-            "[laugh], [chuckle], [sigh], [gasp], [cough], [clear throat], [sniff], [groan], [shush]. "
-            "Use only these cues naturally in context to enhance the conversational flow. "
-            "Examples: [chuckle] That is funny. [sigh] That was a long day."
-        )
+    if tts.language_prompt:
+        parts.append(tts.language_prompt)
+
+    if tts.expressivity_prompt:
+        parts.append(tts.expressivity_prompt)
 
     if is_bedtime:
         parts.append(_bedtime_constraints(audience))
@@ -49,10 +51,14 @@ def build_behavior_constraints(
     elif experience_type == "story":
         parts.append(_story_constraints(audience))
     else:
-        parts.append(_conversation_constraints(tts_backend=tts_backend))
+        parts.append(_conversation_constraints(tts=tts))
 
     if thinking_model:
         parts.append("Do not output <think> or reasoning text. Respond with the final answer only.")
+
+    llm_addendum = get_llm_profile(llm_repo).prompt_addendum
+    if llm_addendum:
+        parts.append(llm_addendum)
 
     return " ".join(parts)
 
@@ -146,7 +152,7 @@ def _bedtime_constraints(audience: str = KID) -> str:
     )
 
 
-def _conversation_constraints(*, tts_backend: str) -> str:
+def _conversation_constraints(*, tts: TtsProfile) -> str:
     base = (
         "You are in normal conversation mode. Respond as direct spoken dialogue only. "
         "Do not narrate scenes, actions, environments, or camera-like descriptions. "
@@ -154,13 +160,7 @@ def _conversation_constraints(*, tts_backend: str) -> str:
         "Do not write long quoted monologues. "
         "Use short, natural, back-and-forth conversational sentences."
     )
-    if tts_backend == "chatterbox-turbo":
-        return (
-            base + " If you use paralinguistic cues, use ONLY bracketed tags from the allowed list."
-        )
-    return (
-        base + " Do not use any paralinguistic cues or tags (no bracketed cues like [laugh])."
-    )
+    return base + " " + tts.conversation_prompt
 
 
 # ---------------------------------------------------------------------------

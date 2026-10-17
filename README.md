@@ -100,9 +100,30 @@ Create experiences with personalities that can play games, tell stories, engage 
 
 ## Stack
 
-- STT: Whisper Turbo ASR
-- TTS: Qwen3-TTS and Chatterbox-turbo
-- LLMs: any LLM from [`mlx-community`](http://huggingface.co/mlx-community) (Gemma 4, Qwen3.8, Muse Glimmer, Qwen3, Llama, Mistral3, etc.)
+- **STT**
+  - [Whisper Large v3 Turbo ASR](https://huggingface.co/mlx-community/whisper-large-v3-turbo-asr-fp16)
+- **TTS**
+  - [Qwen3-TTS 12Hz 0.6B](https://huggingface.co/mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit)
+  - [Chatterbox Turbo](https://huggingface.co/mlx-community/chatterbox-turbo-fp16)
+  - [Breeze TTS 2](https://huggingface.co/mlx-community/Breeze-TTS-2-mlx-4bit)
+  - [Chatterbox Multilingual v3](https://huggingface.co/mlx-community/chatterbox-multilingual-v3)
+  - [OmniVoice](https://huggingface.co/mlx-community/OmniVoice-bf16)
+  - [Voxtral TTS 4B](https://huggingface.co/mlx-community/Voxtral-4B-TTS-2603-mlx-bf16)
+  - [Higgs Audio v3 4B](https://huggingface.co/bosonai/higgs-audio-v3-tts-4b)
+  - [Fish Audio Drama 3](https://huggingface.co/mlx-community/fish-audio-drama-3-4bit) (35B MoE, needs 32 GB+)
+  - [rumik-oss 1](https://huggingface.co/rumik-ai/rumik-oss-1-mlx-4bit) (Indic languages)
+  - [Irodori-TTS v4.1](https://huggingface.co/mlx-community/Irodori-TTS-v4.1-Small-8bit) (Japanese)
+- **LLMs** (any model from [`mlx-community`](http://huggingface.co/mlx-community) works)
+  - Gemma 4 (26B A4B, 12B)
+  - Qwen3.8 27B
+  - Muse Glimmer 30B
+  - Qwen3.5 (2B, 4B, 9B)
+  - Qwen3 (0.6B, 1.7B, 4B)
+  - Ministral 3 3B
+  - gpt-oss 20B
+  - Llama 3.2 (1B, 3B)
+- **Realtime**
+  - _TODO: list realtime models_
 - App: Tauri, React, Tailwind CSS, TypeScript, Rust
 - Platform focus: Apple Silicon (M1/2/3/4/5)
 - Hardware device: ESP32-S3
