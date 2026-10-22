@@ -21,9 +21,9 @@ English | [中文](README.zh.md)
 </div>
 
 ## News
-- **2026:** Featured on Hackster: [The Easy Way to Build Interactive AI Toys for Your Kids](https://www.hackster.io/news/the-easy-way-to-build-interactive-ai-toys-for-your-kids-0ba401a9328f).
 - **2026-05:** Featured in Ars Technica: [The new Wild West of AI kids' toys](https://arstechnica.com/ai/2026/05/the-new-wild-west-of-ai-kids-toys/).
 - **2026-05:** Featured in WIRED: [The New Wild West of AI Kids' Toys](https://www.wired.com/story/the-new-wild-west-of-ai-kids-toys/).
+- **2026-03-17:** Featured on Hackster: [The Easy Way to Build Interactive AI Toys for Your Kids](https://www.hackster.io/news/the-easy-way-to-build-interactive-ai-toys-for-your-kids-0ba401a9328f).
 - **2026-03-14:** OpenToys launched🎉 And it's Pi Day! If you're looking to run realtime AI models like OpenAI Realtime, Gemini, Eleven Labs and more on your ESP32 device, check it out [here](https://www.github.com/akdeb/ElatoAI).
 
 ## 🎥 Demo Video

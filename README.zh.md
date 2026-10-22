@@ -21,9 +21,9 @@
 </div>
 
 ## 最新动态
-- **2026：** 被 Hackster 报道：[The Easy Way to Build Interactive AI Toys for Your Kids](https://www.hackster.io/news/the-easy-way-to-build-interactive-ai-toys-for-your-kids-0ba401a9328f)。
 - **2026-05：** 被 Ars Technica 报道：[The new Wild West of AI kids' toys](https://arstechnica.com/ai/2026/05/the-new-wild-west-of-ai-kids-toys/)。
 - **2026-05：** 被 WIRED 报道：[The New Wild West of AI Kids' Toys](https://www.wired.com/story/the-new-wild-west-of-ai-kids-toys/)。
+- **2026-03-17：** 被 Hackster 报道：[The Easy Way to Build Interactive AI Toys for Your Kids](https://www.hackster.io/news/the-easy-way-to-build-interactive-ai-toys-for-your-kids-0ba401a9328f)。
 - **2026-03-14：** OpenToys 发布 🎉 正好也是 Pi Day！如果你想在 ESP32 设备上运行 OpenAI Realtime、Gemini、ElevenLabs 等实时 AI 模型，可以查看 [ElatoAI](https://www.github.com/akdeb/ElatoAI)。
 
 ## 🎥 演示视频
