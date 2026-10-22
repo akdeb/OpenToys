@@ -4,6 +4,11 @@ mlx==0.32.1
 mlx-lm==0.31.3
 mlx-vlm==0.6.14
 mlx-audio[stt,tts]==0.5.9
+# mlx-audio is installed with --no-deps, so its stt/tts extras must be listed here.
+mistral-common[audio]==1.12.0
+sentencepiece==0.2.2
+ptts==0.4.0
+zstandard==0.25.0
 einops==0.8.1
 transformers==5.15.0
 librosa==0.11.0

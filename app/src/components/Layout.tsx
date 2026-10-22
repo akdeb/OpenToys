@@ -4,7 +4,7 @@ import { useActiveUser } from '../state/ActiveUserContext';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useEffect, useState } from 'react';
-import { X, Download, Laptop, Play } from 'lucide-react';
+import { X, Download, Laptop, Play, AudioLines, ChevronDown } from 'lucide-react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { VoiceWsProvider, useVoiceWs } from '../state/VoiceWsContext';
 import { globalPersonalityImageUrl, versionedRemoteUrl } from '../lib/remoteAssets';
@@ -24,6 +24,10 @@ const LayoutInner = () => {
   const [deviceSessionId, setDeviceSessionId] = useState<string | null>(null);
   const [downloadedVoiceIds, setDownloadedVoiceIds] = useState<Set<string>>(new Set());
   const [isStartingDevice, setIsStartingDevice] = useState(false);
+  // Built-in voices of the active TTS model; empty when it clones from a reference clip.
+  const [ttsBackend, setTtsBackend] = useState<string | null>(null);
+  const [presetVoices, setPresetVoices] = useState<{ id: string; name: string }[]>([]);
+  const [presetVoice, setPresetVoice] = useState<string>('');
   const personalityImageSrc = (p: any) => {
     if (!p) return null;
     if (p?.is_global) {
@@ -81,6 +85,43 @@ const LayoutInner = () => {
 
     load();
   }, [activeUser?.current_personality_id]);
+
+  const personalityId = activeUser?.current_personality_id;
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadPresetVoices = async () => {
+      try {
+        const models = await api.getModels();
+        const backend = String(models?.tts?.backend || '');
+        const option = (models?.tts?.options || []).find((o: any) => o?.id === backend);
+        const voices: { id: string; name: string }[] = option?.presetVoices || [];
+        let chosen = '';
+        if (voices.length && personalityId) {
+          const saved = await api.getSetting(`preset_voice:${backend}:${personalityId}`).catch(() => null);
+          const value = String(saved?.value || '');
+          chosen = voices.some((v) => v.id === value) ? value : '';
+        }
+        if (cancelled) return;
+        setTtsBackend(backend || null);
+        setPresetVoices(voices);
+        setPresetVoice(chosen);
+      } catch {
+        if (!cancelled) setPresetVoices([]);
+      }
+    };
+    void loadPresetVoices();
+    return () => {
+      cancelled = true;
+    };
+  }, [personalityId, location.pathname]);
+
+  const onPresetVoiceChange = (value: string) => {
+    setPresetVoice(value);
+    if (ttsBackend && personalityId) {
+      void api.setSetting(`preset_voice:${ttsBackend}:${personalityId}`, value || null).catch(() => {});
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -342,8 +383,36 @@ const LayoutInner = () => {
                   </div>
                 </div>
                 </div>
-                <div className="mt-2.5 pt-2 border-t border-gray-100 text-center text-[11px] leading-tight font-mono text-gray-500">
-                  Models can be wrong — verify important information.
+                <div className="mt-2.5 pt-2 border-t border-gray-100 flex items-center justify-between gap-3 text-[11px] leading-tight font-mono text-gray-500">
+                  {presetVoices.length > 0 ? (
+                    <label
+                      className="relative shrink-0 flex items-center gap-1 cursor-pointer hover:text-gray-800"
+                      title="This model can't clone voices, so pick one of its built-in voices"
+                    >
+                      <AudioLines size={12} className="shrink-0" />
+                      <span className="max-w-[130px] truncate">
+                        {presetVoices.find((v) => v.id === presetVoice)?.name || 'Default voice'}
+                      </span>
+                      <ChevronDown size={11} className="shrink-0" />
+                      <select
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        value={presetVoice}
+                        onChange={(e) => onPresetVoiceChange(e.target.value)}
+                        aria-label="Preset voice"
+                      >
+                        <option value="">Default voice</option>
+                        {presetVoices.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : (
+                    <span />
+                  )}
+                  <span className="truncate">Models can be wrong — verify important information.</span>
+                  {presetVoices.length > 0 ? <span className="shrink-0 w-[1px]" /> : <span />}
                 </div>
               </div>
             </div>

@@ -1,0 +1,5 @@
+#!/bin/sh
+# Keep README.zh.md structurally identical to README.md.
+if git diff --cached --name-only | grep -qE '^README(\.zh)?\.md$'; then
+  python3 scripts/check_readme_parity.py || exit 1
+fi

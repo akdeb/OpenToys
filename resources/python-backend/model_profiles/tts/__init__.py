@@ -9,6 +9,7 @@ from . import (
     higgs_audio_v3,
     irodori_tts,
     omnivoice,
+    phonon,
     qwen3_tts,
     rumik_oss,
     voxtral_tts,
@@ -28,6 +29,7 @@ TTS_PROFILES: tuple[TtsProfile, ...] = (
     fish_drama3.PROFILE,
     rumik_oss.PROFILE,
     irodori_tts.PROFILE,
+    phonon.PROFILE,
 )
 
 _BY_ALIAS = {

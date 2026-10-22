@@ -5,11 +5,12 @@ import mlx.core as mx
 import numpy as np
 from mlx_lm import generate as mx_generate
 from mlx_lm import stream_generate as mx_stream_generate
+from mlx_lm.tokenizer_utils import NaiveStreamingDetokenizer
 from mlx_lm.utils import load as load_llm
 from mlx_audio.stt import load as load_stt
 
-from model_profiles import get_tts_profile
-from tts import BreezeTTS, ChatterboxTTS, GenericTTS, Qwen3TTS
+from model_profiles import get_llm_profile, get_tts_profile
+from tts import BreezeTTS, ChatterboxTTS, GenericTTS, PhononTTS, Qwen3TTS
 from utils import STT, LLM, resolve_local_model_source, strip_reasoning
 
 TTS_ENGINES = {
@@ -17,6 +18,7 @@ TTS_ENGINES = {
     "chatterbox": ChatterboxTTS,
     "breeze": BreezeTTS,
     "generic": GenericTTS,
+    "phonon": PhononTTS,
 }
 
 try:
@@ -125,6 +127,11 @@ class VoicePipeline:
         # module at all and load only through it.
         try:
             llm, tokenizer = load_llm(model_repo)
+            # Mistral checkpoints load a MistralCommonBackend tokenizer with no `.vocab`,
+            # which mlx-lm's default streaming detokenizer needs; the naive one only
+            # needs `.decode`.
+            if not hasattr(tokenizer._tokenizer, "vocab"):
+                tokenizer._detokenizer_class = NaiveStreamingDetokenizer
             return llm, tokenizer, "lm"
         except Exception as lm_error:
             if load_vlm is None:
@@ -207,12 +214,32 @@ class VoicePipeline:
             lines.append("assistant:")
         return "\n".join(lines).strip()
 
+    def _tokenizer_is_mistral_common(self) -> bool:
+        return self.llm_backend == "lm" and not hasattr(
+            getattr(self.tokenizer, "_tokenizer", None), "vocab"
+        )
+
     def _apply_chat_template(self, messages, add_generation_prompt: bool, clear_thinking: bool | None):
+        prompt = self._render_chat_template(messages, add_generation_prompt, clear_thinking)
+        if hasattr(prompt, "keys"):
+            prompt = list(prompt["input_ids"])
+        prefix = get_llm_profile(self.llm_model).generation_prefix
+        if prefix and add_generation_prompt and isinstance(prompt, str):
+            prompt += prefix
+        return prompt
+
+    def _render_chat_template(self, messages, add_generation_prompt: bool, clear_thinking: bool | None):
         if not hasattr(self.tokenizer, "apply_chat_template"):
             return self._messages_to_plain_prompt(
                 messages, add_generation_prompt=add_generation_prompt
             )
-        base_kwargs = dict(tokenize=False, add_generation_prompt=add_generation_prompt)
+        # MistralCommonBackend re-encodes a rendered string as plain text (control
+        # tokens like [INST] and </s> stop being special, so generation never hits
+        # EOS), so for it we ask for token ids directly.
+        base_kwargs = dict(
+            tokenize=self._tokenizer_is_mistral_common(),
+            add_generation_prompt=add_generation_prompt,
+        )
 
         # Muse Glimmer has no on/off switch for reasoning - its template only takes
         # reasoning_strength, and leaving it unset selects the template default
@@ -472,7 +499,10 @@ class VoicePipeline:
         cancel_event: asyncio.Event = None,
         ref_audio_path: str | None = None,
         ref_text: str | None = None,
+        voice: str | None = None,
     ):
+        # Only engines with built-in voices (GenericTTS) take a per-call voice.
+        tts_kwargs = {"voice": voice} if voice and get_tts_profile(self.tts_backend).preset_voices else {}
         audio_queue = asyncio.Queue()
         loop = asyncio.get_running_loop()
         stream_error: list[Exception] = []
@@ -480,7 +510,7 @@ class VoicePipeline:
         def _tts_stream():
             try:
                 for audio_bytes in self.tts.generate(
-                    text, ref_audio_path=ref_audio_path, ref_text=ref_text
+                    text, ref_audio_path=ref_audio_path, ref_text=ref_text, **tts_kwargs
                 ):
                     if cancel_event and cancel_event.is_set():
                         break

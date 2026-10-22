@@ -335,6 +335,7 @@ class GenericTTS:
 
     CHUNK_SAMPLES = 2880
     TARGET_SAMPLE_RATE = 24_000  # the Opus path downstream is fixed at 24 kHz
+    EMPTY_RETRIES = 2
 
     def __init__(
         self,
@@ -379,6 +380,7 @@ class GenericTTS:
         text: str,
         ref_audio_path: Optional[str] = None,
         ref_text: Optional[str] = None,
+        voice: Optional[str] = None,
     ) -> Generator[bytes, None, None]:
         if not self.model:
             raise RuntimeError("TTS model not loaded")
@@ -387,6 +389,8 @@ class GenericTTS:
             self.prepare_ref_audio(ref_audio_path)
 
         gen_kwargs = dict(self.generate_kwargs)
+        if voice:
+            gen_kwargs["voice"] = voice
         if self.stream:
             gen_kwargs.update(stream=True, streaming_interval=self.streaming_interval)
         if self.use_ref and self.ref_audio_path and (ref_text or not self.ref_needs_text):
@@ -395,15 +399,25 @@ class GenericTTS:
                 gen_kwargs["ref_text"] = ref_text
 
         model_rate = int(getattr(self.model, "sample_rate", self.TARGET_SAMPLE_RATE))
-        for result in self.model.generate(text, **gen_kwargs):
-            audio = getattr(result, "audio", result)
-            rate = int(getattr(result, "sample_rate", None) or model_rate)
-            audio_np = np.asarray(audio, dtype=np.float32).reshape(-1)
-            audio_np = np.clip(self._resample(audio_np, rate), -1.0, 1.0)
-            audio_int16 = (audio_np * 32767.0).astype(np.int16)
+        # Sampling can emit end-of-audio on the very first frame (Voxtral raises
+        # "No audio frames generated"); nothing has been yielded yet, so just resample.
+        for attempt in range(self.EMPTY_RETRIES + 1):
+            yielded = False
+            try:
+                for result in self.model.generate(text, **gen_kwargs):
+                    audio = getattr(result, "audio", result)
+                    rate = int(getattr(result, "sample_rate", None) or model_rate)
+                    audio_np = np.asarray(audio, dtype=np.float32).reshape(-1)
+                    audio_np = np.clip(self._resample(audio_np, rate), -1.0, 1.0)
+                    audio_int16 = (audio_np * 32767.0).astype(np.int16)
 
-            for i in range(0, len(audio_int16), self.CHUNK_SAMPLES):
-                yield audio_int16[i : i + self.CHUNK_SAMPLES].tobytes()
+                    for i in range(0, len(audio_int16), self.CHUNK_SAMPLES):
+                        yielded = True
+                        yield audio_int16[i : i + self.CHUNK_SAMPLES].tobytes()
+                return
+            except RuntimeError as e:
+                if yielded or "No audio frames" not in str(e) or attempt == self.EMPTY_RETRIES:
+                    raise RuntimeError(f"{e} (text={text!r}, voice={gen_kwargs.get('voice')!r})") from e
 
     def warmup(self) -> None:
         for _ in self.generate("Hello."):
@@ -412,3 +426,72 @@ class GenericTTS:
     @property
     def sample_rate(self) -> int:
         return self.TARGET_SAMPLE_RATE
+
+
+class PhononTTS:
+    """Gradium Phonon via the `ptts` runtime (Rust, CPU, no PyTorch).
+
+    Voices are looked up by name in the Phonon voice catalog; no reference clip.
+    """
+
+    CHUNK_SAMPLES = 2880
+    TARGET_SAMPLE_RATE = 24_000
+
+    def __init__(
+        self,
+        model_id: str,
+        output_sample_rate: int = 24_000,
+        stream: bool = True,
+        streaming_interval: float = 2.0,
+        lang: str = "en",
+        quant: str = "q8",
+        voice: Optional[str] = None,
+        temperature: float = 0.3,
+    ):
+        self.model_id = model_id
+        self.output_sample_rate = output_sample_rate
+        self.lang = lang
+        self.quant = quant
+        self.voice = voice
+        self.temperature = temperature
+        self.model = None
+
+    def load(self) -> None:
+        import ptts
+
+        source = resolve_local_model_source(self.model_id)
+        if not Path(source).is_dir():
+            source = f"hf://{self.model_id}"
+        self.model = ptts.TTS(source, lang=self.lang, quant=self.quant, temperature=self.temperature)
+
+    def prepare_ref_audio(self, ref_audio_path: Optional[str]) -> None:
+        pass
+
+    def generate(
+        self,
+        text: str,
+        ref_audio_path: Optional[str] = None,
+        ref_text: Optional[str] = None,
+        voice: Optional[str] = None,
+    ) -> Generator[bytes, None, None]:
+        if not self.model:
+            raise RuntimeError("TTS model not loaded")
+
+        pending = np.zeros(0, dtype=np.int16)
+        with self.model.stream(text, voice=voice or self.voice) as audio:
+            for pcm in audio:
+                chunk = np.clip(np.asarray(pcm, dtype=np.float32).reshape(-1), -1.0, 1.0)
+                pending = np.concatenate([pending, (chunk * 32767.0).astype(np.int16)])
+                while len(pending) >= self.CHUNK_SAMPLES:
+                    yield pending[: self.CHUNK_SAMPLES].tobytes()
+                    pending = pending[self.CHUNK_SAMPLES :]
+        if len(pending):
+            yield pending.tobytes()
+
+    def warmup(self) -> None:
+        for _ in self.generate("Hello."):
+            pass
+
+    @property
+    def sample_rate(self) -> int:
+        return self.output_sample_rate

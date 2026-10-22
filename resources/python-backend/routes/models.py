@@ -17,6 +17,7 @@ from pydantic import BaseModel
 
 import db_service
 from model_profiles import TTS_PROFILES, get_tts_profile
+from services.voice_refs import record_tts_capabilities
 from utils import LLM, STT, normalize_tts_backend, resolve_local_model_source
 
 logger = logging.getLogger(__name__)
@@ -154,6 +155,8 @@ async def get_models(request: Request):
                     "diskGb": p.disk_gb,
                     "quality": p.quality,
                     "note": p.note,
+                    "voiceCloning": p.voice_cloning,
+                    "presetVoices": [{"id": vid, "name": name} for vid, name in p.preset_voices],
                 }
                 for p in TTS_PROFILES
             ],
@@ -470,6 +473,7 @@ async def switch_tts_model(request: Request, body: TtsSwitchRequest):
             # Same as the LLM switch: with no pipeline yet, persist and move on.
             if not pipeline:
                 db_service.db_service.set_setting("tts_backend", normalized_backend)
+                record_tts_capabilities(normalized_backend)
                 request.app.state.tts_backend = normalized_backend
                 yield json.dumps({
                     "stage": "complete", "progress": 1.0,
@@ -479,6 +483,7 @@ async def switch_tts_model(request: Request, body: TtsSwitchRequest):
             try:
                 await pipeline.set_tts_backend(normalized_backend)
                 db_service.db_service.set_setting("tts_backend", normalized_backend)
+                record_tts_capabilities(normalized_backend)
                 request.app.state.tts_backend = normalized_backend
             except Exception as e:
                 logger.error(f"Failed to switch TTS backend: {e}")

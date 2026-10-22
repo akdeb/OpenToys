@@ -7,9 +7,9 @@
 
 # OpenToys
 
-### 面向玩具、陪伴设备和机器人的开源本地语音 AI，可在你的 MacBook 上运行
+### 面向玩具、陪伴设备和机器人的开源本地语音 AI，由你的 Mac 驱动
 
-*OpenToys 是 [ElatoAI](https://www.github.com/akdeb/ElatoAI) 的本地优先平台版本。无需云端运行、没有订阅锁定，数据保留在本机设备上。*
+*OpenToys 是 [ElatoAI](https://www.github.com/akdeb/ElatoAI) 的本地优先平台版本。无需云端运行、没有订阅锁定，数据保留在本机设备上，推理在本地运行，并通过 websocket 连接你的 ESP32-S3。*
 
 **Apple Silicon · Rust + React · ESP32-S3 · Whisper ASR · Qwen3-TTS · MLX LLMs**
 
@@ -20,33 +20,15 @@
 
 </div>
 
-## 媒体报道
-<p>
-  <a href="https://www.wired.com/story/the-new-wild-west-of-ai-kids-toys/" target="_blank">
-    <img src="assets/wired.png" width="180" align="left"/>
-  </a>
-  <strong>The New Wild West of AI Kids Toys</strong>
-  <br/>
-  <a href="https://www.wired.com/story/the-new-wild-west-of-ai-kids-toys/">阅读 WIRED 文章 →</a>
-</p>
-<br clear="left"/>
-
-<p>
-  <a href="https://www.hackster.io/news/the-easy-way-to-build-interactive-ai-toys-for-your-kids-0ba401a9328f" target="_blank">
-    <img src="assets/hackster.png" width="180" align="left"/>
-  </a>
-  <strong>The Easy Way to Build Interactive AI Toys for Your Kids</strong>
-  <br/>
-  <a href="https://www.hackster.io/news/the-easy-way-to-build-interactive-ai-toys-for-your-kids-0ba401a9328f">阅读 Hackster 文章 →</a>
-</p>
-<br clear="left"/>
+## 最新动态
+- **2026：** 被 Hackster 报道：[The Easy Way to Build Interactive AI Toys for Your Kids](https://www.hackster.io/news/the-easy-way-to-build-interactive-ai-toys-for-your-kids-0ba401a9328f)。
+- **2026-05：** 被 Ars Technica 报道：[The new Wild West of AI kids' toys](https://arstechnica.com/ai/2026/05/the-new-wild-west-of-ai-kids-toys/)。
+- **2026-05：** 被 WIRED 报道：[The New Wild West of AI Kids' Toys](https://www.wired.com/story/the-new-wild-west-of-ai-kids-toys/)。
+- **2026-03-14：** OpenToys 发布 🎉 正好也是 Pi Day！如果你想在 ESP32 设备上运行 OpenAI Realtime、Gemini、ElevenLabs 等实时 AI 模型，可以查看 [ElatoAI](https://www.github.com/akdeb/ElatoAI)。
 
 ## 🎥 演示视频
 
 [![OpenToys Demo](assets/demo.png)](https://youtu.be/V5uNgMRsBHE)
-
-## 最新动态
-- **2026-03-14：** OpenToys 发布 🎉 正好也是 Pi Day！如果你想在 ESP32 设备上运行 OpenAI Realtime、Gemini、ElevenLabs 等实时 AI 模型，可以查看 [ElatoAI](https://www.github.com/akdeb/ElatoAI)。
 
 ## 为什么选择 OpenToys？
 
@@ -92,9 +74,30 @@
 
 ## 技术栈
 
-- STT：Whisper Turbo ASR
-- TTS：Qwen3-TTS 和 BreezeBlue TTS 2
-- LLM：来自 [`mlx-community`](http://huggingface.co/mlx-community) 的任意 LLM（Qwen3、Llama、Mistral3 等）
+- **STT**
+  - [Whisper Large v3 Turbo ASR](https://huggingface.co/mlx-community/whisper-large-v3-turbo-asr-fp16)
+- **TTS**
+  - [Qwen3-TTS 12Hz 0.6B](https://huggingface.co/mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit)
+  - [Chatterbox Turbo](https://huggingface.co/mlx-community/chatterbox-turbo-fp16)
+  - [Breeze TTS 2](https://huggingface.co/mlx-community/Breeze-TTS-2-mlx-4bit)
+  - [Chatterbox Multilingual v3](https://huggingface.co/mlx-community/chatterbox-multilingual-v3)
+  - [OmniVoice](https://huggingface.co/mlx-community/OmniVoice-bf16)
+  - [Voxtral TTS 4B](https://huggingface.co/mlx-community/Voxtral-4B-TTS-2603-mlx-4bit)
+  - [Higgs Audio v3 4B](https://huggingface.co/bosonai/higgs-audio-v3-tts-4b)
+  - [Fish Audio Drama 3](https://huggingface.co/mlx-community/fish-audio-drama-3-4bit)（35B MoE，需要 32 GB 以上内存）
+  - [rumik-oss 1](https://huggingface.co/rumik-ai/rumik-oss-1-mlx-4bit)（印度语系语言）
+  - [Irodori-TTS v4.1](https://huggingface.co/mlx-community/Irodori-TTS-v4.1-Small-8bit)（日语）
+- **LLM**（来自 [`mlx-community`](http://huggingface.co/mlx-community) 的任意模型均可使用）
+  - Gemma 4（26B A4B、12B）
+  - Qwen3.8 27B
+  - Muse Glimmer 30B
+  - Qwen3.5（2B、4B、9B）
+  - Qwen3（0.6B、1.7B、4B）
+  - Ministral 3 3B
+  - gpt-oss 20B
+  - Llama 3.2（1B、3B）
+- **实时模型**
+  - _待办：列出实时模型_
 - App：Tauri、React、Tailwind CSS、TypeScript、Rust
 - 重点平台：Apple Silicon（M1/2/3/4/5）
 - 硬件设备：ESP32-S3

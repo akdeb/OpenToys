@@ -2,10 +2,17 @@ from .firmware import firmware_bin_path, list_serial_ports, prepare_firmware_ima
 from .network import get_local_ip
 from .pipeline import VoicePipeline
 from .text import sanitize_spoken_text
-from .voice_refs import resolve_voice_ref_audio_path, resolve_voice_ref_text
+from .voice_refs import (
+    record_tts_capabilities,
+    resolve_preset_voice,
+    resolve_voice_ref_audio_path,
+    resolve_voice_ref_text,
+)
 from .ws_manager import ConnectionManager
 
 __all__ = [
+    "record_tts_capabilities",
+    "resolve_preset_voice",
     "ConnectionManager",
     "VoicePipeline",
     "firmware_bin_path",

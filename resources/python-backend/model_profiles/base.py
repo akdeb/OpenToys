@@ -53,6 +53,12 @@ class TtsProfile:
     # Constructor kwargs for the engine (temperature, top_k, ...).
     params: dict = field(default_factory=dict)
 
+    # False when the model only speaks built-in voices and cannot clone a reference clip.
+    voice_cloning: bool = True
+    # Built-in voices the user can pick per character, as (id, label). The id is
+    # passed to the model as the `voice` generate kwarg.
+    preset_voices: tuple[tuple[str, str], ...] = ()
+
     # Paralinguistic cues the model can voice, e.g. [laugh] or (laugh). None means
     # the model reads tags aloud, so the LLM must not write any.
     cue_style: Optional[CueStyle] = None
@@ -95,6 +101,8 @@ class LlmProfile:
     match: tuple[str, ...] = ()
     # Extra system-prompt text for this family (empty for most).
     prompt_addendum: str = ""
+    # Text appended after the rendered chat template, to steer where the reply starts.
+    generation_prefix: str = ""
     note: str = ""
 
 

@@ -49,12 +49,14 @@ class SettingUpdate(BaseModel):
 
 @router.put("/settings/{key}")
 async def set_setting(key: str, body: SettingUpdate):
+    from services.voice_refs import record_tts_capabilities
     from utils import normalize_tts_backend
 
     if key == "tts_backend":
         try:
             normalized = normalize_tts_backend(body.value)
             db_service.db_service.set_setting(key, normalized)
+            record_tts_capabilities(normalized)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:

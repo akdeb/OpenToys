@@ -39,6 +39,8 @@ from services import (
     ConnectionManager,
     VoicePipeline,
     get_local_ip,
+    record_tts_capabilities,
+    resolve_preset_voice,
     resolve_voice_ref_audio_path,
     resolve_voice_ref_text,
     sanitize_spoken_text,
@@ -68,6 +70,7 @@ def _configure_pipeline_defaults(app: FastAPI) -> None:
         if not stored:
             db_service.db_service.set_setting("tts_backend", "qwen3-tts")
         app.state.tts_backend = normalize_tts_backend(stored or "qwen3-tts")
+        record_tts_capabilities(app.state.tts_backend)
     if not hasattr(app.state, "silence_threshold"):
         app.state.silence_threshold = 0.03
     if not hasattr(app.state, "silence_duration"):
@@ -409,13 +412,17 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
         vid = getattr(personality, "voice_id", None)
         return resolve_voice_ref_audio_path(vid), resolve_voice_ref_text(vid)
 
+    def _preset_voice():
+        # Re-read per utterance so a pick made in the dock applies mid-chat.
+        return resolve_preset_voice(getattr(pipeline, "tts_backend", None), personality_id)
+
     async def _send_audio_esp32(text: str, cancel: asyncio.Event | None = None):
         """Stream TTS audio as Opus packets to ESP32."""
         ref_audio, ref_text = _voice_refs()
         opus_packets: list[bytes] = []
         opus = create_opus_packetizer(lambda pkt: opus_packets.append(pkt))
         try:
-            async for chunk in pipeline.synthesize_speech(text, cancel, ref_audio_path=ref_audio, ref_text=ref_text):
+            async for chunk in pipeline.synthesize_speech(text, cancel, ref_audio_path=ref_audio, ref_text=ref_text, voice=_preset_voice()):
                 if (cancel and cancel.is_set()) or not ws_open:
                     break
                 buf = bytearray(chunk)
@@ -437,7 +444,7 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
         ref_audio, ref_text = _voice_refs()
         buffered = bytearray()
         started = prebuffer_bytes == 0
-        async for chunk in pipeline.synthesize_speech(text, cancel, ref_audio_path=ref_audio, ref_text=ref_text):
+        async for chunk in pipeline.synthesize_speech(text, cancel, ref_audio_path=ref_audio, ref_text=ref_text, voice=_preset_voice()):
             if (cancel and cancel.is_set()) or not ws_open:
                 break
             if not started:
@@ -736,7 +743,7 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
                         if not phrase:
                             break
                         spoken_phrases += 1
-                        async for chunk in pipeline.synthesize_speech(phrase, cancel_event, ref_audio_path=ref_audio, ref_text=ref_text):
+                        async for chunk in pipeline.synthesize_speech(phrase, cancel_event, ref_audio_path=ref_audio, ref_text=ref_text, voice=_preset_voice()):
                             if cancel_event.is_set() or not ws_open:
                                 break
                             buf = bytearray(chunk)
@@ -752,7 +759,10 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
                             break
                 except Exception as e:
                     logger.error(f"{label} TTS stream error (esp32): {e}")
-                    cancel_event.set()
+                    # In bedtime autoplay cancel_event ends the whole story and closes the
+                    # socket, so one bad phrase may only cost the rest of its own chapter.
+                    if not bedtime_autoplay:
+                        cancel_event.set()
                 finally:
                     opus.flush(pad_final_frame=True)
                     while opus_packets:
@@ -777,7 +787,7 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
                         if not phrase:
                             break
                         spoken_phrases += 1
-                        async for chunk in pipeline.synthesize_speech(phrase, cancel_event, ref_audio_path=ref_audio, ref_text=ref_text):
+                        async for chunk in pipeline.synthesize_speech(phrase, cancel_event, ref_audio_path=ref_audio, ref_text=ref_text, voice=_preset_voice()):
                             if cancel_event.is_set() or not ws_open:
                                 break
                             if not started:
@@ -793,7 +803,10 @@ async def websocket_unified(websocket: WebSocket, client_type: str = Query(defau
                             break
                 except Exception as e:
                     logger.error(f"{label} TTS stream error (desktop): {e}")
-                    cancel_event.set()
+                    # In bedtime autoplay cancel_event ends the whole story and closes the
+                    # socket, so one bad phrase may only cost the rest of its own chapter.
+                    if not bedtime_autoplay:
+                        cancel_event.set()
                 finally:
                     if buffered:
                         try:

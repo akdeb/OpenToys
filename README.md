@@ -20,42 +20,15 @@ English | [中文](README.zh.md)
 
 </div>
 
-## Featured in
-<p>
-  <a href="https://www.wired.com/story/the-new-wild-west-of-ai-kids-toys/" target="_blank">
-    <img src="assets/wired.png" width="180" align="left"/>
-  </a>
-  <strong>The New Wild West of AI Kids Toys</strong>
-  <br/>
-  <a href="https://www.wired.com/story/the-new-wild-west-of-ai-kids-toys/">Read the WIRED article →</a>
-</p>
-<br clear="left"/>
-<p>
-  <a href="https://arstechnica.com/ai/2026/05/the-new-wild-west-of-ai-kids-toys/" target="_blank">
-    <img src="assets/arstechnica.png" width="180" align="left"/>
-  </a>
-<strong>AI kids' toys roundup </strong>
-  <br/>
-  <a href="https://arstechnica.com/ai/2026/05/the-new-wild-west-of-ai-kids-toys/">Read the ArsTechnica article →</a>
-</p>
-<br clear="left"/>
-
-<p>
-  <a href="https://www.hackster.io/news/the-easy-way-to-build-interactive-ai-toys-for-your-kids-0ba401a9328f" target="_blank">
-    <img src="assets/hackster.png" width="180" align="left"/>
-  </a>
-  <strong>The Easy Way to Build Interactive AI Toys for Your Kids</strong>
-  <br/>
-  <a href="https://www.hackster.io/news/the-easy-way-to-build-interactive-ai-toys-for-your-kids-0ba401a9328f">Read the Hackster article →</a>
-</p>
-<br clear="left"/>
+## News
+- **2026:** Featured on Hackster: [The Easy Way to Build Interactive AI Toys for Your Kids](https://www.hackster.io/news/the-easy-way-to-build-interactive-ai-toys-for-your-kids-0ba401a9328f).
+- **2026-05:** Featured in Ars Technica: [The new Wild West of AI kids' toys](https://arstechnica.com/ai/2026/05/the-new-wild-west-of-ai-kids-toys/).
+- **2026-05:** Featured in WIRED: [The New Wild West of AI Kids' Toys](https://www.wired.com/story/the-new-wild-west-of-ai-kids-toys/).
+- **2026-03-14:** OpenToys launched🎉 And it's Pi Day! If you're looking to run realtime AI models like OpenAI Realtime, Gemini, Eleven Labs and more on your ESP32 device, check it out [here](https://www.github.com/akdeb/ElatoAI).
 
 ## 🎥 Demo Video
 
 [![OpenToys Demo](assets/demo.png)](https://youtu.be/V5uNgMRsBHE)
-
-## News
-- **2026-03-14:** OpenToys launched🎉 And it's Pi Day! If you're looking to run realtime AI models like OpenAI Realtime, Gemini, Eleven Labs and more on your ESP32 device, check it out [here](https://www.github.com/akdeb/ElatoAI). 
 
 ## Why OpenToys?
 
@@ -108,7 +81,7 @@ Create experiences with personalities that can play games, tell stories, engage 
   - [Breeze TTS 2](https://huggingface.co/mlx-community/Breeze-TTS-2-mlx-4bit)
   - [Chatterbox Multilingual v3](https://huggingface.co/mlx-community/chatterbox-multilingual-v3)
   - [OmniVoice](https://huggingface.co/mlx-community/OmniVoice-bf16)
-  - [Voxtral TTS 4B](https://huggingface.co/mlx-community/Voxtral-4B-TTS-2603-mlx-bf16)
+  - [Voxtral TTS 4B](https://huggingface.co/mlx-community/Voxtral-4B-TTS-2603-mlx-4bit)
   - [Higgs Audio v3 4B](https://huggingface.co/bosonai/higgs-audio-v3-tts-4b)
   - [Fish Audio Drama 3](https://huggingface.co/mlx-community/fish-audio-drama-3-4bit) (35B MoE, needs 32 GB+)
   - [rumik-oss 1](https://huggingface.co/rumik-ai/rumik-oss-1-mlx-4bit) (Indic languages)

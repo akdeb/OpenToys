@@ -18,6 +18,7 @@ PROFILE = TtsProfile(
         use_ref=False,
         generate_kwargs=dict(voice="Ira", instruct="happy, steady pace"),
     ),
+    voice_cloning=False,
     cue_style="angle",
     cues=CUES,
     expressivity_prompt=_EXPRESSIVITY,
